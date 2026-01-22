@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Maze</title>
+  <link rel="stylesheet" href="./maze.css" />
+</head>
+<body>
+  <header id="top">
+    <div id="controls">
+      <label>
+        W
+        <input id="widthIn" type="number" value="21" min="7" step="2" inputmode="numeric">
+      </label>
+      <label>
+        H
+        <input id="heightIn" type="number" value="21" min="7" step="2" inputmode="numeric">
+      </label>
+
+      <label for="difficulty">Difficulty</label>
+      <select id="difficulty" name="difficulty">
+        <option value="easy">Easy</option>
+        <option value="normal" selected>Normal</option>
+        <option value="hard">Hard</option>
+        <option value="cruel">Cruel</option>
+      </select>
+
+<button id="regen" type="button">Regenerate</button>
+<button id="reset" type="button">Reset</button>
+<button id="undo" type="button" disabled>Undo</button>
+
+<label class="inline">
+  <input id="rev" type="checkbox">
+  Unlock 🔙 Travel
+</label>
+
+<button id="hint" type="button">Exit Hint (A*)</button>
+<button id="deadHint" type="button">Bonus Hint (BFS)</button>
+      <button id="coachBtn" type="button">How</button>
+
+      <small class="note">
+        Tip: hold arrow keys or hold pointer to continuously move.
+      </small>
+    </div>
+  </header>
+
+  <main id="wrap">
+    <canvas id="canvas" aria-label="Maze game"></canvas>
+  </main>
+
+  <footer id="hud" aria-live="polite">
+    <div class="muted">Progress: <span id="progress">0%</span></div>
+    <div class="muted">Time: <span id="timer">00:00</span></div>
+    <div class="muted">Score: <span id="score">0</span></div>
+    <div class="muted">Highscore: <span id="highscore">0</span></div>
+  </footer>
+
+  <dialog id="coachDialog" aria-labelledby="coachTitle">
+    <form method="dialog">
+      <h3 id="coachTitle">How to play</h3>
+      <p>
+        Goal: fill all path cells into walls (intentionally "ruin the maze").
+        If “Unlock 🔙 Travel” is unchecked, the cell you leave becomes a wall —
+        plan routes to collect dead-end bonuses. Reach the end for a finish
+        bonus reduced by your elapsed time.
+      </p>
+      <ul>
+        <li>Use arrows or swipe/hold pointer for continuous movement.</li>
+        <li>Dead-end cells give bonus points and spawn a little particle flourish + sound.</li>
+        <li>Undo restores the last move/fill (limited stack), hint runs A* in a worker.</li>
+      </ul>
+      <menu>
+        <button id="closeCoach" value="close" type="submit">Close</button>
+      </menu>
+    </form>
+  </dialog>
+
+  <script type="module" src="./maze.js"></script>
+</body>
+</html>
+

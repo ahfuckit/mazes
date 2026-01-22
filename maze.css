@@ -1,0 +1,192 @@
+:root {
+  --bar-height: 3.5rem;
+  --pad-x: 1rem;
+  --bg-body: oklch(97% 0.01 250);
+  --bg-panel: #ffffff;
+  --border-soft: #e8ecf1;
+  --text-main: #111827;
+  --text-muted: #6b7280;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Inter", sans-serif;
+  background: var(--bg-body);
+  color: var(--text-main);
+  display: grid;
+  grid-template-rows: var(--bar-height) minmax(0, 1fr) var(--bar-height);
+}
+
+/* Top controls bar */
+#top {
+  display: flex;
+  align-items: center;
+  padding-inline: var(--pad-x);
+  background: var(--bg-panel);
+  border-bottom: 1px solid var(--border-soft);
+  box-shadow: 0 1px 2px color-mix(in srgb, black 6%, transparent);
+
+  #controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    align-items: center;
+    width: 100%;
+  }
+
+  label {
+    display: flex;
+    gap: 0.25rem;
+    align-items: center;
+    font-size: 0.95rem;
+  }
+
+  label.inline {
+    white-space: nowrap;
+  }
+
+  .note {
+    display: block;
+    color: var(--text-muted);
+    font-size: 0.8rem;
+    max-width: 22rem;
+  }
+}
+
+button,
+input,
+select {
+  font: inherit;
+  padding: 0.35rem 0.6rem;
+  border-radius: 999px;
+  border: 1px solid #d0d6dc;
+  background: #ffffff;
+  cursor: pointer;
+  min-height: 2.1rem;
+}
+
+button {
+  transition: transform 0.08s ease-out, box-shadow 0.08s ease-out, background 0.1s;
+}
+
+button:enabled:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px color-mix(in srgb, black 10%, transparent);
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+input[type="number"] {
+  width: 4.5rem;
+}
+
+/* Main canvas wrapper */
+#wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  min-height: 0;
+}
+
+canvas#canvas {
+  background: #0b0b0b;
+  border-radius: 0.75rem;
+  touch-action: none;
+  display: block;
+  max-width: calc(100vw - 3rem);
+  max-height: calc(100vh - (2 * var(--bar-height)) - 3rem);
+}
+
+/* HUD footer */
+#hud {
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  background: var(--bg-panel);
+  border-top: 1px solid var(--border-soft);
+  box-shadow: 0 -1px 2px color-mix(in srgb, black 4%, transparent);
+
+  .muted {
+    opacity: 0.87;
+    font-size: 0.95rem;
+  }
+}
+
+/* Dialog */
+#coachDialog {
+  max-width: min(32rem, 92vw);
+  border-radius: 0.75rem;
+  border: 1px solid var(--border-soft);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.18);
+  padding: 1.25rem 1.5rem;
+
+  form {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  h3 {
+    margin: 0;
+  }
+
+  p {
+    margin: 0;
+    color: var(--text-main);
+  }
+
+  ul {
+    margin: 0;
+    padding-left: 1.25rem;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+  }
+
+  menu {
+    display: flex;
+    justify-content: flex-end;
+    margin: 0;
+    padding-top: 0.75rem;
+  }
+}
+
+/* Small screens */
+@media (max-width: 640px) {
+  body {
+    grid-template-rows: auto minmax(0, 1fr) auto;
+  }
+
+  #top {
+    padding-block: 0.4rem;
+
+    #controls {
+      justify-content: center;
+    }
+  }
+
+  #hud {
+    flex-wrap: wrap;
+    gap: 0.25rem;
+    padding-inline: 0.5rem;
+  }
+
+  canvas#canvas {
+    max-width: calc(100vw - 1.5rem);
+    max-height: calc(100vh - 12rem);
+  }
+}
