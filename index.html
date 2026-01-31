@@ -3,28 +3,30 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Maze Carving Demo (DFS / Prim / Kruskal / Wilson)</title>
+  <title>DFS / Prim / Kruskal / Wilson</title>
   <style>
     body { font-size: 1.1rem; }
-    .row { display: flex; gap: 1%; flex-wrap: wrap; align-items: center; margin-bottom: 12px; }
+    .row { display: flex; gap: 1%; flex-wrap: wrap; align-items: center; margin-bottom: 12px; max-width: 92vmin; }
     button { padding: 0.1em; }
-    #grid { display: grid; background: #999; width: fit-content; margin: 1vmin }
-    .cell { width: 1rem; height: 1rem; background: #111; }
+    #grid { display: grid; background: #999; width: 90vmin; margin: 1%; max-width: 90vmin; max-height: 90vmin; height: 90vmin }
+    .cell { width: 100%; height: 100%; background: #111; }
     .path { background: #f5f5f5; }
     .current { outline: 2px solid #00c8ff; outline-offset: -2px; }
-    .between { background: #b700bf; } /* considered/carved between-cell this step */
-    .room { background: #e9e9e9; }    /* optional: room cells look slightly different */
+    .between { background: #b700bf; }
+    .room { background: #e9e9e9; }  
     code { background: #f2f200; padding: 1%; }
     select, input { font-size: 1rem; }
+    input[type=number] {min-width: 3rem; max-width: 4rem;}
   </style>
 </head>
 <body>
-  <div class="row">
+  <div class="row">   
+    <label>Size:
+      <input id="size" type="number" min="5" step="2" value="21">
+    </label>
     <button id="reset">Reset</button>
     <button id="step">Step</button>
     <button id="auto">Auto: Off</button>
-    <a href="./index2.html">Play your way through some mazes!</a>
-
     <label>Algorithm:
       <select id="algo">
         <option value="dfs">DFS Backtracker (±2 carve)</option>
@@ -33,16 +35,10 @@
         <option value="wilson">Wilson (loop-erased random walk)</option>
       </select>
     </label>
-
-    <label>Size:
-      <input id="size" type="number" min="5" step="2" value="21" style="width:100%; max-width:2vw">
-    </label>
-
-    <span id="status"></span>
   </div>
 
   <div id="grid"></div>
-
+  <span id="status"></span>
   <p>
     Watch what happens on each step:
     <br />
@@ -112,10 +108,6 @@
         }
       }
     }
-
-    // ---------------------------
-    // Algorithms (init + step)
-    // ---------------------------
 
     // DFS Backtracker
     const dfsState = {
@@ -602,3 +594,4 @@
   </script>
 </body>
 </html>
+
