@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Maze Carving Demo (Multiple Algorithms)</title>
+  <title>Maze Carving Demo (DFS / Prim / Kruskal)</title>
   <style>
     body { font-size: 1.1rem; }
     .row { display: flex; gap: 1%; flex-wrap: wrap; align-items: center; margin-bottom: 12px; }
@@ -11,9 +11,8 @@
     #grid { display: grid; background: #999; width: fit-content; margin: 1vmin }
     .cell { width: 1rem; height: 1rem; background: #111; }
     .path { background: #f5f5f5; }
-    /* negative border widths don’t render; outline works reliably */
     .current { outline: 2px solid #00c8ff; outline-offset: -2px; }
-    .between { background: #b700bf; } /* the carved “wall-between” cell this step */
+    .between { background: #b700bf; } /* the carved/considered “wall-between” cell this step */
     .room { background: #e9e9e9; }    /* optional: room cells look slightly different */
     code { background: #f2f200; padding: 1%; }
     select, input { font-size: 1rem; }
@@ -30,6 +29,7 @@
       <select id="algo">
         <option value="dfs">DFS Backtracker (±2 carve)</option>
         <option value="prim">Randomized Prim (frontier edges)</option>
+        <option value="kruskal">Kruskal (Union-Find walls)</option>
       </select>
     </label>
 
@@ -62,11 +62,12 @@
     let maze = [];       // false = wall, true = path
     let cells = [];      // DOM refs
     let autoTimer = null;
-    let lastBetween = null;
 
     const dirs = [
       [-2, 0], [2, 0], [0, -2], [0, 2],
     ];
+
+    const START = [1, 1];
 
     const givedeets = (text) => { deets.textContent = text; };
 
@@ -86,7 +87,7 @@
       maze[x][y] = isPath;
       const el = cells[x][y];
       el.classList.toggle('path', isPath);
-      el.classList.toggle('room', isPath && x % 2 === 1 && y % 2 === 1); // just for visuals
+      el.classList.toggle('room', isPath && x % 2 === 1 && y % 2 === 1);
     }
 
     function clearHighlights() {
@@ -94,7 +95,6 @@
         cells[x][y].classList.remove('current');
         cells[x][y].classList.remove('between');
       }
-      lastBetween = null;
     }
 
     function buildGrid() {
@@ -116,9 +116,6 @@
     // Algorithms (init + step)
     // ---------------------------
 
-    // Shared start point (odd,odd)
-    const START = [1, 1];
-
     // DFS Backtracker (your original)
     const dfsState = {
       stack: [],
@@ -133,7 +130,7 @@
         cells[sx][sy].classList.add('current');
 
         statusEl.textContent = `Algorithm: DFS | Stack: ${this.stack.length} | Carving…`;
-        givedeets(`DFS backtracker: choose a neighbor by ±2 and carve the “between” cell at dx/2, dy/2.`);
+        givedeets(`DFS: pick an unvisited neighbor by ±2 and carve the “between” cell at dx/2, dy/2.`);
       },
       step() {
         if (this.stack.length === 0) {
@@ -152,7 +149,7 @@
           const ny = y + dy;
 
           if (!isValid(nx, ny)) continue;
-          if (maze[nx][ny]) continue; // already carved/visited “room”
+          if (maze[nx][ny]) continue;
 
           const bx = x + dx / 2;
           const by = y + dy / 2;
@@ -161,7 +158,6 @@
           setCell(nx, ny, true);
 
           cells[bx][by].classList.add('between');
-          lastBetween = [bx, by];
 
           this.stack.push([nx, ny]);
           statusEl.textContent = `Algorithm: DFS | Move: (${x},${y}) -> (${nx},${ny}) | Between: (${bx},${by}) | Stack: ${this.stack.length}`;
@@ -174,7 +170,7 @@
       }
     };
 
-    // Randomized Prim (frontier edges between carved and uncarved rooms)
+    // Randomized Prim (frontier edges)
     const primState = {
       frontier: [], // edges: {x,y,nx,ny,bx,by}
       init() {
@@ -188,14 +184,14 @@
         cells[sx][sy].classList.add('current');
 
         statusEl.textContent = `Algorithm: Prim | Frontier: ${this.frontier.length} | Growing…`;
-        givedeets(`Randomized Prim: maintain a frontier of edges from the carved region to uncarved rooms; pick one edge randomly, carve between + target room.`);
+        givedeets(`Prim: keep a frontier of edges from carved to uncarved rooms; pick one randomly, carve between + target room.`);
       },
       _addFrontierFrom(x, y) {
         for (const [dx, dy] of dirs) {
           const nx = x + dx;
           const ny = y + dy;
           if (!isValid(nx, ny)) continue;
-          if (maze[nx][ny]) continue; // already carved room
+          if (maze[nx][ny]) continue;
 
           const bx = x + dx / 2;
           const by = y + dy / 2;
@@ -203,16 +199,13 @@
         }
       },
       step() {
-        // Keep popping random edges until we find one that still leads to an uncarved room
         while (this.frontier.length > 0) {
           const idx = (Math.random() * this.frontier.length) | 0;
           const edge = this.frontier.splice(idx, 1)[0];
 
           const { x, y, nx, ny, bx, by } = edge;
 
-          if (!isValid(nx, ny) || maze[nx][ny]) {
-            continue; // stale/duplicate edge
-          }
+          if (!isValid(nx, ny) || maze[nx][ny]) continue;
 
           clearHighlights();
           cells[x][y].classList.add('current');
@@ -221,8 +214,7 @@
           setCell(nx, ny, true);
 
           cells[bx][by].classList.add('between');
-          cells[nx][ny].classList.add('current'); // show the newly added room too
-          lastBetween = [bx, by];
+          cells[nx][ny].classList.add('current');
 
           this._addFrontierFrom(nx, ny);
 
@@ -236,9 +228,120 @@
       }
     };
 
+    // Kruskal (Union-Find over rooms; carve walls between sets)
+    const kruskalState = {
+      parent: [],
+      rank: [],
+      edges: [],
+      roomsPerSide: 0,
+
+      _roomId(x, y) {
+        // x,y are odd room coords in [1..N-2]
+        const rx = (x - 1) / 2;
+        const ry = (y - 1) / 2;
+        return rx * this.roomsPerSide + ry;
+      },
+
+      _find(a) {
+        let p = this.parent[a];
+        if (p !== a) this.parent[a] = this._find(p);
+        return this.parent[a];
+      },
+
+      _union(a, b) {
+        a = this._find(a);
+        b = this._find(b);
+        if (a === b) return false;
+
+        if (this.rank[a] < this.rank[b]) [a, b] = [b, a];
+        this.parent[b] = a;
+        if (this.rank[a] === this.rank[b]) this.rank[a]++;
+        return true;
+      },
+
+      init() {
+        // Rooms are (odd,odd). Number per side:
+        this.roomsPerSide = (N - 1) / 2;
+        const roomCount = this.roomsPerSide * this.roomsPerSide;
+
+        this.parent = Array.from({ length: roomCount }, (_, i) => i);
+        this.rank = Array(roomCount).fill(0);
+        this.edges = [];
+
+        // 1) Carve all rooms open (but keep between-cells as walls)
+        for (let x = 1; x < N; x += 2) {
+          for (let y = 1; y < N; y += 2) {
+            setCell(x, y, true);
+          }
+        }
+
+        // 2) Build wall-edges between adjacent rooms (right/down to avoid duplicates)
+        for (let x = 1; x < N; x += 2) {
+          for (let y = 1; y < N; y += 2) {
+            const aId = this._roomId(x, y);
+
+            // right neighbor
+            if (x + 2 < N) {
+              const nx = x + 2, ny = y;
+              const bId = this._roomId(nx, ny);
+              const wx = x + 1, wy = y; // between-cell
+              this.edges.push({ ax: x, ay: y, bx: nx, by: ny, wx, wy, aId, bId });
+            }
+
+            // down neighbor
+            if (y + 2 < N) {
+              const nx = x, ny = y + 2;
+              const bId = this._roomId(nx, ny);
+              const wx = x, wy = y + 1;
+              this.edges.push({ ax: x, ay: y, bx: nx, by: ny, wx, wy, aId, bId });
+            }
+          }
+        }
+
+        shuffle(this.edges);
+
+        clearHighlights();
+        const [sx, sy] = START;
+        cells[sx][sy].classList.add('current');
+
+        statusEl.textContent = `Algorithm: Kruskal | Walls: ${this.edges.length} | Union-Find ready…`;
+        givedeets(`Kruskal: all rooms start open; shuffle the walls between rooms. If a wall connects different sets, carve it; otherwise skip (cycle).`);
+      },
+
+      step() {
+        if (this.edges.length === 0) {
+          statusEl.textContent = 'Done. (Kruskal walls exhausted)';
+          return false;
+        }
+
+        // Grab next candidate wall
+        const e = this.edges.pop();
+
+        clearHighlights();
+        // highlight the two rooms being tested + the wall between
+        cells[e.ax][e.ay].classList.add('current');
+        cells[e.bx][e.by].classList.add('current');
+        cells[e.wx][e.wy].classList.add('between');
+
+        const connected = this._union(e.aId, e.bId);
+        if (connected) {
+          // carve the wall between the rooms
+          setCell(e.wx, e.wy, true);
+          statusEl.textContent =
+            `Algorithm: Kruskal | CONNECT sets | Carve wall (${e.wx},${e.wy}) between (${e.ax},${e.ay}) <-> (${e.bx},${e.by}) | Walls left: ${this.edges.length}`;
+        } else {
+          statusEl.textContent =
+            `Algorithm: Kruskal | SKIP cycle | Keep wall (${e.wx},${e.wy}) between (${e.ax},${e.ay}) <-> (${e.bx},${e.by}) | Walls left: ${this.edges.length}`;
+        }
+
+        return true;
+      }
+    };
+
     const algorithms = {
       dfs: dfsState,
       prim: primState,
+      kruskal: kruskalState,
     };
 
     function currentAlgo() {
@@ -249,8 +352,21 @@
     // Control flow
     // ---------------------------
 
+    function setAuto(on) {
+      if (on) {
+        btnAuto.textContent = 'Auto: On';
+        autoTimer = setInterval(() => {
+          const ok = stepOnce();
+          if (!ok) setAuto(false);
+        }, 30);
+      } else {
+        btnAuto.textContent = 'Auto: Off';
+        clearInterval(autoTimer);
+        autoTimer = null;
+      }
+    }
+
     function reset() {
-      // Stop auto if running (so changing algo/size doesn’t fight the timer)
       setAuto(false);
 
       N = Number(sizeEl.value) || 21;
@@ -267,25 +383,9 @@
       return currentAlgo().step();
     }
 
-    function setAuto(on) {
-      if (on) {
-        btnAuto.textContent = 'Auto: On';
-        autoTimer = setInterval(() => {
-          const ok = stepOnce();
-          if (!ok) setAuto(false);
-        }, 30);
-      } else {
-        btnAuto.textContent = 'Auto: Off';
-        clearInterval(autoTimer);
-        autoTimer = null;
-      }
-    }
-
     btnReset.addEventListener('click', reset);
     btnStep.addEventListener('click', stepOnce);
     btnAuto.addEventListener('click', () => setAuto(!autoTimer));
-
-    // Reset whenever algorithm changes
     algoEl.addEventListener('change', reset);
 
     reset();
